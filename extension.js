@@ -195,7 +195,7 @@ class Extension {
         minutes = minutes % 60;
 
         if (hours == 0) {
-            return ("" + minutes).padStart(2, '0') + 'm';
+            return minutes + 'm';
         } else {
             return hours + "h " + ("" + minutes).padStart(2, '0') + 'm';
         }
