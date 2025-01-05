@@ -4,9 +4,9 @@ DOMAIN=cweiske.de
 .PHONY: all pack install clean
 
 $(NAME).zip:
-	mkdir dist
+	mkdir dist || true
 	cp extension.js metadata.json stylesheet.css README.rst dist/
-	@(cd dist && zip ../$(NAME).zip -9r .)
+	cd dist && zip ../$(NAME).zip -9r .
 
 pack: $(NAME).zip
 
