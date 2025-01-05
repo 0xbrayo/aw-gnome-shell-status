@@ -13,8 +13,9 @@ Manual installation
 -------------------
 Manually clone the repository in the right location::
 
-  cd ~/.local/share/gnome-shell/extensions
-  git clone https://codeberg.org/cweiske/activitywatch-status-gnome-shell.git activitywatch-status@cweiske.de
+  git clone https://codeberg.org/cweiske/activitywatch-status-gnome-shell.git
+  cd activitywatch-status-gnome-shell
+  make install
 
 Now restart gnome shell by logging off and in again (Wayland)
 or Alt+F2 -> r -> Enter (X11).
