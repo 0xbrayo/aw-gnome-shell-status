@@ -4,5 +4,6 @@
     "uuid": "activitywatch-status@cweiske.de",
     "shell-version": [
         "43"
-    ]
+    ],
+    "url": "https://codeberg.org/cweiske/activitywatch-status-gnome-shell"
 }
