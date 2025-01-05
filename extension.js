@@ -99,7 +99,7 @@ class Extension {
         this._timeoutId = GLib.timeout_add_seconds(
             GLib.PRIORITY_DEFAULT, 30, () => {
                 this.fetchStatus();
-                return true;
+                return GLib.SOURCE_CONTINUE;
             }
         );
     }
@@ -107,6 +107,9 @@ class Extension {
     disable() {
         this._indicator.destroy();
         this._indicator = null;
+        if (this._timeoutId) {
+            GLib.Source.remove(this._timeoutId);
+        }
     }
 
     fetchStatus() {
