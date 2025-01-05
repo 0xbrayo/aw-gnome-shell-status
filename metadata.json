@@ -1,0 +1,8 @@
+{
+  "name": "ActivityWatch status",
+  "description": "Shows the total time spent on the computer",
+  "uuid": "activitywatch-status@cweiske.de",
+  "shell-version": [
+    "43"
+  ]
+}
