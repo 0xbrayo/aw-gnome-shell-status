@@ -61,7 +61,7 @@ class Indicator extends PanelMenu.Button {
 
         let item = new PopupMenu.PopupMenuItem(_('Open ActivityWatch'));
         item.connect('activate', () => {
-            Gio.AppInfo.launch_default_for_uri('http://localhost:5666', null);
+            Gio.AppInfo.launch_default_for_uri('http://localhost:5600', null);
             //Main.notify(_('Whatʼs up, folks?'));
         });
         this.menu.addMenuItem(item);
@@ -131,7 +131,7 @@ class Extension {
 
         let message = Soup.Message.new(
             'POST',
-            'http://localhost:5666/api/0/query/'
+            'http://localhost:5600/api/0/query/'
         );
         message.set_request_body_from_bytes(
             'application/json',
