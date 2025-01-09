@@ -106,78 +106,94 @@ export default class ActivityWatchExtension extends Extension {
     }
 
     fetchStatus() {
-        let dayStart = new Date();
-        dayStart.setHours(0);
-        dayStart.setMinutes(0);
-        dayStart.setSeconds(0);
+        const now = new Date();
+        const currentHour = now.getHours();
+        
+        // Start of day
+        const dayStart = new Date(now);
+        dayStart.setHours(0, 0, 0, 0);
 
-        let dayEnd = new Date(dayStart);
-        dayEnd.setDate(dayEnd.getDate() + 1);
+        // Create array of promises for each hour
+        let promises = [];
+        
+        for (let hour = 0; hour <= currentHour; hour++) {
+            const hourStart = new Date(dayStart);
+            hourStart.setHours(hour);
+            const hourEnd = new Date(hourStart);
+            hourEnd.setHours(hour + 1);
 
-        let body = {
-            query: [
-                'afk_events = query_bucket(find_bucket("aw-watcher-afk_"));',
-                'events = filter_keyvals(afk_events, "status", ["not-afk"]);',
-                'RETURN = sum_durations(events);'
-            ],
-            timeperiods: [
-                dayStart.toISOString() + '/' + dayEnd.toISOString()
-            ]
-        };
+            let body = {
+                query: [
+                    'afk_events = query_bucket(find_bucket("aw-watcher-afk_"));',
+                    'events = filter_keyvals(afk_events, "status", ["not-afk"]);',
+                    'RETURN = sum_durations(events);'
+                ],
+                timeperiods: [
+                    hourStart.toISOString() + '/' + hourEnd.toISOString()
+                ]
+            };
 
-        try {
-            const uri = GLib.Uri.parse('http://localhost:5600/api/0/query/', GLib.UriFlags.NONE);
-            let message = Soup.Message.new_from_uri('POST', uri);
-            
-            const bytes = GLib.Bytes.new(JSON.stringify(body));
-            message.set_request_body_from_bytes('application/json', bytes);
-
-            let session = new Soup.Session();
-            session.timeout = 5;
-
-            session.send_and_read_async(
-                message,
-                GLib.PRIORITY_DEFAULT,
-                null,
-                (session, result) => {
-                    this.retrieveStatus(session, result);
-                }
-            );
-        } catch (e) {
-            log('ActivityWatch Status: Error setting up request: ' + e);
-            this.displayConnectionError();
+            promises.push(this.queryHour(body));
         }
+
+        // Sum up all hourly results
+        Promise.all(promises)
+            .then(results => {
+                const totalSeconds = results.reduce((sum, seconds) => sum + (seconds || 0), 0);
+                this.displayActivityTime(totalSeconds);
+            })
+            .catch(error => {
+                log('ActivityWatch Status: Error fetching data: ' + error);
+                this.displayConnectionError();
+            });
     }
 
-    retrieveStatus(session, result) {
-        try {
-            const bytes = session.send_and_read_finish(result);
-            if (!bytes) {
-                this.displayConnectionError();
-                return;
-            }
-
-            const decoder = new TextDecoder('utf-8');
-            const response = decoder.decode(bytes.get_data());
-            
+    queryHour(body) {
+        return new Promise((resolve, reject) => {
             try {
-                const data = JSON.parse(response);
-                if (!Array.isArray(data) || data.length !== 1 || typeof data[0] !== 'number') {
-                    log('ActivityWatch Status: Invalid response format');
-                    this.displayStatus('error');
-                    return;
-                }
+                const uri = GLib.Uri.parse('http://localhost:5600/api/0/query/', GLib.UriFlags.NONE);
+                let message = Soup.Message.new_from_uri('POST', uri);
+                
+                const bytes = GLib.Bytes.new(JSON.stringify(body));
+                message.set_request_body_from_bytes('application/json', bytes);
 
-                const seconds = data[0];
-                this.displayActivityTime(seconds);
-            } catch (parseError) {
-                log('ActivityWatch Status: Failed to parse response: ' + parseError);
-                this.displayStatus('error');
+                let session = new Soup.Session();
+                session.timeout = 5;
+
+                session.send_and_read_async(
+                    message,
+                    GLib.PRIORITY_DEFAULT,
+                    null,
+                    (session, result) => {
+                        try {
+                            const bytes = session.send_and_read_finish(result);
+                            if (!bytes) {
+                                resolve(0);
+                                return;
+                            }
+
+                            const decoder = new TextDecoder('utf-8');
+                            const response = decoder.decode(bytes.get_data());
+                            const data = JSON.parse(response);
+                            
+                            if (!Array.isArray(data) || data.length !== 1 || typeof data[0] !== 'number') {
+                                log('ActivityWatch Status: Invalid response format for hour');
+                                resolve(0);
+                                return;
+                            }
+
+                            resolve(data[0]);
+                        } catch (error) {
+                            log('ActivityWatch Status: Error processing hour result: ' + error);
+                            resolve(0);
+                        }
+                    }
+                );
+            } catch (error) {
+                log('ActivityWatch Status: Error querying hour: ' + error);
+                resolve(0);
             }
-        } catch (networkError) {
-            log('ActivityWatch Status: Network error: ' + networkError);
-            this.displayConnectionError();
-        }
+        });
     }
 
     displayConnectionError() {
