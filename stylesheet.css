@@ -1,4 +1,11 @@
 .activity-connection-error {
-    background-color: red;
-    color: white;
+    color: #f66151;
+}
+
+.aw-status-icon {
+    margin-right: 4px;
+}
+
+.aw-status-label {
+    margin-left: 4px;
 }

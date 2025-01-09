@@ -16,53 +16,48 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-/* exported init */
+import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
+import Gio from 'gi://Gio';
+import GObject from 'gi://GObject';
+import Soup from 'gi://Soup';
+import St from 'gi://St';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+
+import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 const GETTEXT_DOMAIN = 'activitywatch-status-extension';
-
-const { Clutter, GLib, Gio, GObject, Soup, St } = imports.gi;
-
-const ExtensionUtils = imports.misc.extensionUtils;
-const Main = imports.ui.main;
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
-
-const _ = ExtensionUtils.gettext;
 
 const Indicator = GObject.registerClass(
 class Indicator extends PanelMenu.Button {
     _init() {
-        super._init(0.0, _('ActivityWatch status'));
+        super._init(0.0, 'ActivityWatch status');
 
         let box = new St.BoxLayout();
 
         box.add_child(new St.Icon({
             icon_name: 'emoji-recent-symbolic',
-            style_class: 'system-status-icon',
+            style_class: 'system-status-icon aw-status-icon',
         }));
 
         this._statusLabel = new St.Label({
             text: '?h ??m',
             y_align: Clutter.ActorAlign.CENTER,
+            style_class: 'aw-status-label'
         });
         box.add_child(this._statusLabel);
         this.add_child(box);
 
-        this._status = new PopupMenu.PopupImageMenuItem(_('All fine'), 'view-refresh-symbolic');
+        this._status = new PopupMenu.PopupImageMenuItem('All fine', 'view-refresh-symbolic');
         this._status.hide();
         this.menu.addMenuItem(this._status);
 
-        /*
-        this._totalStatus = new PopupMenu.PopupMenuItem(_('Active time today: ?h ??m'));
-        this._totalStatus.set_can_focus(false);
-        this._totalStatus.set_reactive(false);
-        this.menu.addMenuItem(this._totalStatus);
-        */
-
-        let item = new PopupMenu.PopupMenuItem(_('Open ActivityWatch'));
+        let item = new PopupMenu.PopupMenuItem('Open ActivityWatch');
         item.connect('activate', () => {
             Gio.AppInfo.launch_default_for_uri('http://localhost:5600', null);
-            //Main.notify(_('Whatʼs up, folks?'));
         });
         this.menu.addMenuItem(item);
     }
@@ -83,16 +78,10 @@ class Indicator extends PanelMenu.Button {
     }
 });
 
-class Extension {
-    constructor(uuid) {
-        this._uuid = uuid;
-
-        ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
-    }
-
+export default class ActivityWatchExtension extends Extension {
     enable() {
         this._indicator = new Indicator();
-        Main.panel.addToStatusArea(this._uuid, this._indicator);
+        Main.panel.addToStatusArea(this.metadata.uuid, this._indicator);
         this._indicator.setupStatusRefreshAction(this);
 
         this.fetchStatus();
@@ -105,10 +94,14 @@ class Extension {
     }
 
     disable() {
-        this._indicator.destroy();
-        this._indicator = null;
         if (this._timeoutId) {
             GLib.Source.remove(this._timeoutId);
+            this._timeoutId = null;
+        }
+        
+        if (this._indicator) {
+            this._indicator.destroy();
+            this._indicator = null;
         }
     }
 
@@ -132,50 +125,64 @@ class Extension {
             ]
         };
 
-        let message = Soup.Message.new(
-            'POST',
-            'http://localhost:5600/api/0/query/'
-        );
-        message.set_request_body_from_bytes(
-            'application/json',
-            GLib.Bytes.new(JSON.stringify(body))
-        );
+        try {
+            const uri = GLib.Uri.parse('http://localhost:5600/api/0/query/', GLib.UriFlags.NONE);
+            let message = Soup.Message.new_from_uri('POST', uri);
+            
+            const bytes = GLib.Bytes.new(JSON.stringify(body));
+            message.set_request_body_from_bytes('application/json', bytes);
 
-        let session = new Soup.Session();
-        session.set_timeout(5);
-        session.send_and_read_async(
-            message,
-            GLib.PRIORITY_DEFAULT,
-            null,
-            (session, result) => {
-                this.retrieveStatus(session, result);
-            }
-        )
+            let session = new Soup.Session();
+            session.timeout = 5;
+
+            session.send_and_read_async(
+                message,
+                GLib.PRIORITY_DEFAULT,
+                null,
+                (session, result) => {
+                    this.retrieveStatus(session, result);
+                }
+            );
+        } catch (e) {
+            log('ActivityWatch Status: Error setting up request: ' + e);
+            this.displayConnectionError();
+        }
     }
 
     retrieveStatus(session, result) {
-        let bytes;
         try {
-            bytes = session.send_and_read_finish(result);
-        } catch (e) {
-            this.displayConnectionError();
-            return;
-        }
-        let decoder = new TextDecoder('utf-8');
-        let response = decoder.decode(bytes.get_data());
-        let data = JSON.parse(response);
-        if (typeof(data) != 'object' || !Array.isArray(data) || data.length != 1) {
-            this.displayStatus('error');
-            return;
-        }
+            const bytes = session.send_and_read_finish(result);
+            if (!bytes) {
+                this.displayConnectionError();
+                return;
+            }
 
-        let seconds = data[0];
-        this.displayActivityTime(seconds);
+            const decoder = new TextDecoder('utf-8');
+            const response = decoder.decode(bytes.get_data());
+            
+            try {
+                const data = JSON.parse(response);
+                if (!Array.isArray(data) || data.length !== 1 || typeof data[0] !== 'number') {
+                    log('ActivityWatch Status: Invalid response format');
+                    this.displayStatus('error');
+                    return;
+                }
+
+                const seconds = data[0];
+                this.displayActivityTime(seconds);
+            } catch (parseError) {
+                log('ActivityWatch Status: Failed to parse response: ' + parseError);
+                this.displayStatus('error');
+            }
+        } catch (networkError) {
+            log('ActivityWatch Status: Network error: ' + networkError);
+            this.displayConnectionError();
+        }
     }
 
     displayConnectionError() {
-        this.displayStatus(_('Error'), 'activity-connection-error');
-        this._indicator.displayConnectionError(_('Error: ActivityWatch not running?'));
+        this.displayStatus('Error', 'activity-connection-error');
+        this._indicator.displayConnectionError('Error: ActivityWatch not running?');
     }
 
     displayActivityTime(todayTotalSeconds) {
@@ -184,8 +191,15 @@ class Extension {
     }
 
     displayStatus(message, style_class) {
+        if (!this._indicator || !this._indicator._statusLabel) {
+            return;
+        }
         this._indicator._statusLabel.set_text(message);
-        this._indicator._statusLabel.set_style_class_name(style_class);
+        if (style_class) {
+            this._indicator._statusLabel.set_style_class_name(style_class);
+        } else {
+            this._indicator._statusLabel.set_style_class_name('');
+        }
     }
 
     formatSeconds(seconds) {
@@ -200,8 +214,4 @@ class Extension {
             return hours + "h " + ("" + minutes).padStart(2, '0') + 'm';
         }
     }
-}
-
-function init(meta) {
-    return new Extension(meta.uuid);
 }

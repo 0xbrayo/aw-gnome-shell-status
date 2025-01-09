@@ -3,7 +3,9 @@
     "description": "Shows the total time spent on the computer",
     "uuid": "aw-status@brayo.dev",
     "shell-version": [
-        "43"
+        "45",
+        "46",
+        "47"
     ],
     "url": "https://github.com/0xbrayo/aw-gnome-shell-status"
 }
