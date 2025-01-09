@@ -26,4 +26,7 @@ Enable the extension::
 
 Credits
 -------
-Initial [version](https://codeberg.org/cweiske/activitywatch-status-gnome-shell.git) by [Christian Weiske](https://cweiske.de/)
+Initial version__ by Christian Weiske__.
+
+__ https://codeberg.org/cweiske/activitywatch-status-gnome-shell.git
+__ https://cweiske.de/
