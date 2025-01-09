@@ -13,8 +13,8 @@ Manual installation
 -------------------
 Manually clone the repository in the right location::
 
-  git clone https://codeberg.org/cweiske/activitywatch-status-gnome-shell.git
-  cd activitywatch-status-gnome-shell
+  git clone https://github.com/0xbrayo/aw-gnome-shell-status
+  cd aw-gnome-shell-status
   make install
 
 Now restart gnome shell by logging off and in again (Wayland)
@@ -22,4 +22,8 @@ or Alt+F2 -> r -> Enter (X11).
 
 Enable the extension::
 
-  gnome-extensions enable activitywatch-status@cweiske.de
+  gnome-extensions enable aw-status@brayo.dev
+
+Credits
+-------
+Initial [version](https://codeberg.org/cweiske/activitywatch-status-gnome-shell.git) by [Christian Weiske](https://cweiske.de/)

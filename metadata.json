@@ -1,9 +1,9 @@
 {
     "name": "ActivityWatch status",
     "description": "Shows the total time spent on the computer",
-    "uuid": "activitywatch-status@cweiske.de",
+    "uuid": "aw-status@brayo.dev",
     "shell-version": [
         "43"
     ],
-    "url": "https://codeberg.org/cweiske/activitywatch-status-gnome-shell"
+    "url": "https://github.com/0xbrayo/aw-gnome-shell-status"
 }

@@ -1,5 +1,5 @@
-NAME=activitywatch-status
-DOMAIN=cweiske.de
+NAME=aw-status
+DOMAIN=brayo.dev
 
 .PHONY: all pack install clean
 
