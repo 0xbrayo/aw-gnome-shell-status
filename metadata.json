@@ -7,5 +7,8 @@
         "46",
         "47"
     ],
-    "url": "https://github.com/0xbrayo/aw-gnome-shell-status"
+    "url": "https://github.com/0xbrayo/aw-gnome-shell-status",
+    "version": 1,
+    "version-name": "1.0.0",
+    "gettext-domain": "aw-status@brayo.dev"
 }
