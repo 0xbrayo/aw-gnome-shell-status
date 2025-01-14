@@ -79,6 +79,12 @@ class Indicator extends PanelMenu.Button {
 });
 
 export default class ActivityWatchExtension extends Extension {
+    constructor(metadata) {
+        super(metadata);
+        this._hourlyCache = {};
+        this._cacheDate = null;
+    }
+
     enable() {
         this._indicator = new Indicator();
         Main.panel.addToStatusArea(this.metadata.uuid, this._indicator);
@@ -103,47 +109,73 @@ export default class ActivityWatchExtension extends Extension {
             this._indicator.destroy();
             this._indicator = null;
         }
+
+        // Clear cache
+        this._hourlyCache = {};
+        this._cacheDate = null;
     }
 
     fetchStatus() {
         const now = new Date();
+        const today = now.toDateString();
         const currentHour = now.getHours();
         
+        // Clear cache if it's a new day
+        if (this._cacheDate !== today) {
+            this._hourlyCache = {};
+            this._cacheDate = today;
+        }
+
         // Start of day
         const dayStart = new Date(now);
         dayStart.setHours(0, 0, 0, 0);
 
-        // Create array of promises for each hour
+        // Create array of promises for each uncached hour
         let promises = [];
+        let hourlyData = [];
         
         for (let hour = 0; hour <= currentHour; hour++) {
-            const hourStart = new Date(dayStart);
-            hourStart.setHours(hour);
-            const hourEnd = new Date(hourStart);
-            hourEnd.setHours(hour + 1);
+            if (hour === currentHour || !this._hourlyCache[hour]) {
+                // Query uncached or current hour
+                const hourStart = new Date(dayStart);
+                hourStart.setHours(hour);
+                const hourEnd = new Date(hourStart);
+                hourEnd.setHours(hour + 1);
 
-            let body = {
-                query: [
-                    'afk_events = query_bucket(find_bucket("aw-watcher-afk_"));',
-                    'events = filter_keyvals(afk_events, "status", ["not-afk"]);',
-                    'RETURN = sum_durations(events);'
-                ],
-                timeperiods: [
-                    hourStart.toISOString() + '/' + hourEnd.toISOString()
-                ]
-            };
+                let body = {
+                    query: [
+                        'afk_events = query_bucket(find_bucket("aw-watcher-afk_"));',
+                        'events = filter_keyvals(afk_events, "status", ["not-afk"]);',
+                        'RETURN = sum_durations(events);'
+                    ],
+                    timeperiods: [
+                        hourStart.toISOString() + '/' + hourEnd.toISOString()
+                    ]
+                };
 
-            promises.push(this.queryHour(body));
+                promises.push(
+                    this.queryHour(body).then(seconds => {
+                        // Cache the result unless it's the current hour
+                        if (hour !== currentHour) {
+                            this._hourlyCache[hour] = seconds;
+                        }
+                        hourlyData[hour] = seconds;
+                    })
+                );
+            } else {
+                // Use cached data
+                hourlyData[hour] = this._hourlyCache[hour];
+            }
         }
 
-        // Sum up all hourly results
+        // Wait for any uncached hours to be fetched
         Promise.all(promises)
-            .then(results => {
-                const totalSeconds = results.reduce((sum, seconds) => sum + (seconds || 0), 0);
+            .then(() => {
+                const totalSeconds = hourlyData.reduce((sum, seconds) => sum + (seconds || 0), 0);
                 this.displayActivityTime(totalSeconds);
             })
             .catch(error => {
-                log('ActivityWatch Status: Error fetching data: ' + error);
+                console.error('ActivityWatch Status: Error fetching data: ' + error);
                 this.displayConnectionError();
             });
     }
@@ -177,20 +209,20 @@ export default class ActivityWatchExtension extends Extension {
                             const data = JSON.parse(response);
                             
                             if (!Array.isArray(data) || data.length !== 1 || typeof data[0] !== 'number') {
-                                log('ActivityWatch Status: Invalid response format for hour');
+                                console.error('ActivityWatch Status: Invalid response format for hour');
                                 resolve(0);
                                 return;
                             }
 
                             resolve(data[0]);
                         } catch (error) {
-                            log('ActivityWatch Status: Error processing hour result: ' + error);
+                            console.error('ActivityWatch Status: Error processing hour result: ' + error);
                             resolve(0);
                         }
                     }
                 );
             } catch (error) {
-                log('ActivityWatch Status: Error querying hour: ' + error);
+                console.error('ActivityWatch Status: Error querying hour: ' + error);
                 resolve(0);
             }
         });

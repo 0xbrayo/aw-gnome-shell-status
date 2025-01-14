@@ -1,6 +1,6 @@
 {
-    "name": "ActivityWatch status",
-    "description": "Shows the total time spent on the computer",
+    "name": "AW status",
+    "description": "Shows the total time spent on the computer, fork of [activitywatch-status-gnome-shell](https://codeberg.org/cweiske/activitywatch-status-gnome-shell/)",
     "uuid": "aw-status@brayo.dev",
     "shell-version": [
         "45",
@@ -8,7 +8,8 @@
         "47"
     ],
     "url": "https://github.com/0xbrayo/aw-gnome-shell-status",
-    "version": 1,
-    "version-name": "1.0.0",
-    "gettext-domain": "aw-status@brayo.dev"
+    "gettext-domain": "aw-status@brayo.dev",
+    "donations": {
+        "github": "0xbrayo"
+    }
 }
