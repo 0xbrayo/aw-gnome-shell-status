@@ -8,6 +8,10 @@ Needs a ActivityWatch instance running on http://localhost:5600/
 
 __ https://activitywatch.net/
 
+Install from gnome-extensions.org
+---------------------------------
+
+https://extensions.gnome.org/extension/7811/activitywatch-status/
 
 Manual installation
 -------------------
