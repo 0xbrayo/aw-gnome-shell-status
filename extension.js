@@ -20,7 +20,7 @@ import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
-import Soup from 'gi://Soup';
+import Soup from 'gi://Soup?version=3.0';
 import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -83,6 +83,7 @@ export default class ActivityWatchExtension extends Extension {
         super(metadata);
         this._hourlyCache = {};
         this._cacheDate = null;
+        this._logger = this.getLogger();
     }
 
     enable() {
@@ -175,7 +176,7 @@ export default class ActivityWatchExtension extends Extension {
                 this.displayActivityTime(totalSeconds);
             })
             .catch(error => {
-                console.error('ActivityWatch Status: Error fetching data: ' + error);
+                this._logger.error('Error fetching data:', error);
                 this.displayConnectionError();
             });
     }
@@ -209,20 +210,20 @@ export default class ActivityWatchExtension extends Extension {
                             const data = JSON.parse(response);
                             
                             if (!Array.isArray(data) || data.length !== 1 || typeof data[0] !== 'number') {
-                                console.error('ActivityWatch Status: Invalid response format for hour');
+                                this._logger.error('Invalid response format for hour');
                                 resolve(0);
                                 return;
                             }
 
                             resolve(data[0]);
                         } catch (error) {
-                            console.error('ActivityWatch Status: Error processing hour result: ' + error);
+                            this._logger.error('Error processing hour result:', error);
                             resolve(0);
                         }
                     }
                 );
             } catch (error) {
-                console.error('ActivityWatch Status: Error querying hour: ' + error);
+                this._logger.error('Error querying hour:', error);
                 resolve(0);
             }
         });
