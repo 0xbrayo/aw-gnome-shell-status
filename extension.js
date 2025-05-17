@@ -83,6 +83,7 @@ export default class ActivityWatchExtension extends Extension {
         super(metadata);
         this._hourlyCache = {};
         this._cacheDate = null;
+        this._previousTotalSeconds = 0;
         this._logger = this.getLogger();
     }
 
@@ -235,8 +236,13 @@ export default class ActivityWatchExtension extends Extension {
     }
 
     displayActivityTime(todayTotalSeconds) {
-        this.displayStatus(this.formatSeconds(todayTotalSeconds), '');
+        const isInactive = todayTotalSeconds <= this._previousTotalSeconds;
+        const styleClass = isInactive ? 'activity-inactive' : '';
+        this.displayStatus(this.formatSeconds(todayTotalSeconds), styleClass);
         this._indicator.displayActivityTime();
+        
+        // Update previous total for next comparison
+        this._previousTotalSeconds = todayTotalSeconds;
     }
 
     displayStatus(message, style_class) {
